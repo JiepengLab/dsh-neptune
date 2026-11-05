@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Neptune charger",
+    "description": "Take the pairing credential, check charging status and socket occupancy, schedule a morning resume, start the charge, and hand values to the user through the clipboard."
+  }
+}

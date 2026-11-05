@@ -1,0 +1,8 @@
+# dsh-neptune patch layer.
+#
+# 插进 profile 组合里：加载尼普顿充电这一套工具。
+#
+# name 写包名（不是 file:// URL）：loader 要按包激活它。
+- insert:
+    - id: neptune
+      name: dsh-neptune

@@ -1,0 +1,85 @@
+{
+  "name": "dsh-neptune",
+  "version": "1.2.0",
+  "type": "module",
+  "main": "index.js",
+  "license": "MIT",
+  "description": "尼普顿充电：取 openId、查状态、查插座占用、起续充任务、续充。",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "dsh",
+    "cordis",
+    "neptune",
+    "charging",
+    "electric-vehicle"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JiepengLab/dsh-neptune.git"
+  },
+  "homepage": "https://github.com/JiepengLab/dsh-neptune#readme",
+  "exports": {
+    ".": "./index.js",
+    "./neptune-core.mjs": "./core/neptune-core.mjs",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "lib/",
+    "core/",
+    "skills/",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "verify": "node tests/verify.mjs && node tests/verify-plugin.mjs"
+  },
+  "engines": {
+    "node": ">=20",
+    "dsh": ">=0.2.2-rc.1 <0.3.0-0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.0.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-tools": "0.0.1-rc.1",
+    "qrcode": "^1.5.4"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "catalog": {
+      "category": "charging",
+      "summary": {
+        "en": "Neptune charger for DSH: read the pairing credential from the local WeChat history, check status and socket occupancy, schedule a morning resume, and start the charge. The credential never leaves this machine.",
+        "zh": "尼普顿充电的 DSH 插件：从本机微信浏览历史取凭证，查状态与插座占用，起明早的续充任务并完成起单。凭证不出这台机器。"
+      },
+      "capabilities": [
+        "Pairing credential discovery from the local WeChat browser history",
+        "Account balance, live order, and charging-window status",
+        "Per-socket occupancy for any station",
+        "Schedule a resume task for the morning slot",
+        "Start a metered charge with five pre-flight gates",
+        "Hand the account values or the charge URL to the user through the clipboard"
+      ]
+    }
+  },
+  "dependencies": {
+    "jpeg-js": "^0.4.4",
+    "zxing-wasm": "^3.1.6"
+  }
+}

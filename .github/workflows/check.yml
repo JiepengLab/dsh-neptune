@@ -1,0 +1,34 @@
+name: 检查
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # 语法检查。插件不构建，这一步就够。
+      # 只查脚本。技能是 markdown，不查它的语法。
+      - name: 语法检查
+        run: |
+          for f in index.js lib/*.js core/*.mjs tests/*.mjs scripts/*.mjs; do
+            node --check "$f"
+          done
+
+      # 包结构检查。入口、补丁层、技能正文、图标、locale 都要在。
+      - name: 包结构检查
+        run: node scripts/check-package.mjs
+
+      # 打包自查。真打一个 tarball，再查里面有没有本机路径、用户名、凭证形态的串。
+      - name: 打包自查
+        run: |
+          npm pack
+          node scripts/check-package.mjs --packed
