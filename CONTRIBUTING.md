@@ -69,7 +69,7 @@ pnpm dsh web --patch ./scratch/cordis.yml
 
 `root` 填 `"."` 时，改了这个目录里的文件不用重启 DSH。
 
-插件每次加载会往 `~/.dsh/neptune-plugin.log` 写一行，记下这轮注册了哪些工具。UI 看不全时看那行。
+插件每次加载会往 `$DSH_HOME/neptune-plugin.log` 写一行，记下这轮注册了哪些工具。UI 看不全时看那行。
 
 ## 改协议的时候
 
