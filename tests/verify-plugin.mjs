@@ -290,7 +290,8 @@ check(String(fromBare?.source).includes("环境变量"), "来源标成环境变�
 delete process.env.NEPTUNE_OPENID;
 delete process.env.NEPTUNE_AREAID;
 const fromWechat = await credential();
-check(fromWechat?.source?.includes("History") || fromWechat?.source?.includes("环境变量"),
+check(fromWechat?.source?.includes("History") || fromWechat?.source?.includes("Share Data")
+  || fromWechat?.source?.includes("环境变量"),
   "没有环境变量时回到挖本机微信");
 
 console.log("\n=== agent 给目录那条路 ===");
@@ -312,6 +313,58 @@ check(viaDir?.openId === "FAKE_IN_DIR_TEST", "credential 走目录这条路");
 const emptyDir = await findPairingIn(join(fakeRoot, "nothing-here"));
 check(emptyDir === null, "没有 History 时返回 null");
 rmSync(fakeRoot, { recursive: true, force: true });
+
+console.log("\n=== 候选文件名：History 与 Share Data ===");
+// 微信 4.x 把厂商落地页写进 Share Data（Chromium 的共享字典，不是 SQLite），
+// 浏览历史里有时没有。所以三个文件名都得认。
+// 用的都是合成的假 openId，不碰真凭证。
+const FAKE_OPEN_ID = "FAKEopenId000000000000000000FAKE";
+const landingUrl = (openId) =>
+  `https://szlzxn.cn/wx/indexn.html?openId=${openId}&areaid=6&employeeId=1`;
+
+/** 造一个假的档案目录。只放指定的文件名。 */
+function fakeProfile(rootName, fileName, content) {
+  const root = join(tmpdir(), `${rootName}-${process.pid}`);
+  const profile = join(root, "radium", "web", "profiles", "multitab_fake");
+  mkdirSync(profile, { recursive: true });
+  writeFileSync(join(profile, fileName), content);
+  return { root, profiles: join(root, "radium", "web", "profiles") };
+}
+
+// 只有 Share Data。前面塞几个二进制字节：它是明文字节的共享字典，
+// 按字节读才不丢东西。
+const shareOnly = fakeProfile("neptune-share", "Share Data", Buffer.concat([
+  Buffer.from([0x00, 0xff, 0x10, 0x00, 0x80]),
+  Buffer.from(landingUrl(FAKE_OPEN_ID), "utf8"),
+]));
+const fromShare = await findPairingIn(shareOnly.profiles);
+console.log("只有 Share Data →", fromShare?.source);
+check(fromShare?.openId === FAKE_OPEN_ID, "只有 Share Data 时也取得到 openId");
+check(fromShare?.areaId === 6, "只有 Share Data 时也取得到校区号");
+
+// 老路径不能改坏：只有 History 仍然取得到。
+const historyOnly = fakeProfile("neptune-history", "History", landingUrl(FAKE_OPEN_ID));
+const fromHistory = await findPairingIn(historyOnly.profiles);
+console.log("只有 History →", fromHistory?.source);
+check(fromHistory?.openId === FAKE_OPEN_ID, "只有 History 时仍然取得到 openId");
+check(fromHistory?.areaId === 6, "只有 History 时仍然取得到校区号");
+
+// 备份也认。
+const bakOnly = fakeProfile("neptune-bak", "History.wxbak", landingUrl(FAKE_OPEN_ID));
+const fromBak = await findPairingIn(bakOnly.profiles);
+console.log("只有 History.wxbak →", fromBak?.source);
+check(fromBak?.openId === FAKE_OPEN_ID, "只有 History.wxbak 时也取得到 openId");
+
+// 空目录返回 null。
+const emptyRoot = join(tmpdir(), `neptune-empty-${process.pid}`);
+mkdirSync(join(emptyRoot, "radium", "web", "profiles", "empty_fake"), { recursive: true });
+const fromEmpty = await findPairingIn(join(emptyRoot, "radium", "web", "profiles"));
+console.log("空目录 →", fromEmpty);
+check(fromEmpty === null, "空目录返回 null");
+
+for (const dir of [shareOnly.root, historyOnly.root, bakOnly.root, emptyRoot]) {
+  rmSync(dir, { recursive: true, force: true });
+}
 
 const statusOut = await tools.get("neptune_status").execute({}, { signal: undefined });
 console.log("neptune_status →\n" + statusOut);

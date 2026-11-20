@@ -104,7 +104,7 @@ check(profilesDirCandidates().length >= 2, "有多条候选路径（3.x 与 4.x�
 const scanStart = Date.now();
 const scanned = await findPairingIn(wechatRoots()[0], { maxDepth: 9, maxFiles: 400 });
 console.log(`兜底扫描 ${Date.now() - scanStart} ms →`, scanned ? `找到 ${scanned.source}` : "没找到");
-check(Boolean(scanned), "在微信根目录下扫 History 也能找到");
+check(Boolean(scanned), "在微信根目录下扫到凭证");
 
 console.log("\n" + (problems.length ? `有 ${problems.length} 项不通过` : "全部通过"));
 process.exit(problems.length ? 1 : 0);

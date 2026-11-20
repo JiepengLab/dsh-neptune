@@ -37,9 +37,9 @@ openId 就是凭证。它只存在插件内存里，像环境变量那样只有�
 1. **环境变量**。`NEPTUNE_OPENID` 是 openId 本身，或整条配对串
    `zju-neptune:v1:<openId>:<areaid>`。串里的 areaId 是发给厂商的校区号，
    它优先于 `NEPTUNE_AREAID`。openId 本身不分校区，一个号能看到所有校区的单。
-2. **调用方给的目录**。`neptune_pair` 的 `dir` 参数。插件自己去那儿读 History 文件。
+2. **调用方给的目录**。`neptune_pair` 的 `dir` 参数。插件自己去那儿读 History 与 Share Data 文件。
 3. **挖本机微信浏览历史**。插件先试几个候选路径，再在微信的数据根目录下面扫
-   `History` 文件。openId 只落在**电脑微信的浏览器**里。
+   `History` 与 `Share Data` 文件。openId 只落在**电脑微信的浏览器**里。
 
 **插件说没找到时**：先用文件工具找微信的数据目录，把路径喂给 `dir` 再试一次。
 要找的结构是 `…/radium/web/profiles/<档案名>/History`，喂**上面那一层**的 profiles 目录。

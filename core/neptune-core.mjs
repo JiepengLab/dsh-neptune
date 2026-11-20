@@ -8,7 +8,7 @@
  * 不进模型的上下文，也不返回给调用方。
  */
 
-import { readFile, readdir } from "node:fs/promises";
+import { readFile, readdir, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
@@ -29,6 +29,19 @@ const DEFAULT_AREA_ID = 6;
 
 /** 落地网址在浏览历史里是明文。正则就能取，不用解析 SQLite。 */
 const PAIR_RE = /indexn\.html\?openId=([A-Za-z0-9_-]+)&areaid=(\d+)/g;
+
+/**
+ * 候选文件名。精确匹配，大小写照原样。
+ *
+ * `History` 是浏览历史。`Share Data` 是 Chromium 的共享字典，
+ * 微信 4.x 把厂商落地页写在那儿，浏览历史里有时没有。
+ * `History.wxbak` 是微信自己留的备份。
+ * `History_encrypted` 是加密的，不在名单里。
+ */
+const CANDIDATE_FILE_NAMES = new Set(["History", "History.wxbak", "Share Data"]);
+
+/** 单个候选文件的大小上限。共享字典会长大，别把它整个读进内存。 */
+const MAX_CANDIDATE_BYTES = 16 * 1024 * 1024;
 
 /** 计量档（综合收费：电费 0.558 加服务费 0.55）的费率字段，从设备信息取。 */
 export const RATE_FIELDS = ["efee", "eCharge", "serviceCharge"];
@@ -88,7 +101,7 @@ export function profilesDir() {
 /**
  * 从本机微信浏览历史里找 openId 与 areaid。
  *
- * 候选目录逐个试；都不命中就在微信的数据根目录下面扫 History 文件
+ * 候选目录逐个试；都不命中就在微信的数据根目录下面扫候选文件
  * （微信 3.x 与 4.x 的目录形状不一样，写死的路径认不全）。
  * 找到返回对象，没找到返回 null。**调用方不要把 openId 交给模型。**
  */
@@ -105,16 +118,17 @@ export async function findPairing() {
 }
 
 /**
- * 在一个目录里找浏览历史的 History 文件，取出 openId 与 areaid。
+ * 在一个目录里找候选文件（History、History.wxbak、Share Data），
+ * 取出 openId 与 areaid。
  *
  * 这个目录可以由 agent 找出来（微信 3.x 与 macOS 的目录形状不一样）。
  * **只读文件，不把内容返回给调用方。**
- * 扫描有深度与文件数上限，别让它扫整块盘。
+ * 扫描有深度与文件数上限，另加单文件大小上限，别让它扫整块盘。
  */
 export async function findPairingIn(dir, { maxDepth = 6, maxFiles = 400 } = {}) {
-  const historyFiles = [];
+  const candidates = [];
   const walk = async (current, depth) => {
-    if (depth > maxDepth || historyFiles.length >= maxFiles) return;
+    if (depth > maxDepth || candidates.length >= maxFiles) return;
     let entries;
     try {
       entries = await readdir(current, { withFileTypes: true });
@@ -122,21 +136,30 @@ export async function findPairingIn(dir, { maxDepth = 6, maxFiles = 400 } = {}) 
       return;
     }
     for (const entry of entries) {
-      if (historyFiles.length >= maxFiles) return;
+      if (candidates.length >= maxFiles) return;
       const full = join(current, entry.name);
       if (entry.isDirectory()) {
         await walk(full, depth + 1);
-      } else if (entry.isFile() && entry.name === "History") {
-        historyFiles.push(full);
+      } else if (entry.isFile() && CANDIDATE_FILE_NAMES.has(entry.name)) {
+        candidates.push(full);
       }
     }
   };
   await walk(dir, 0);
 
-  for (const file of historyFiles) {
+  for (const file of candidates) {
+    // 先看大小。共享字典会长大，超限的跳过，别整个读进内存。
+    try {
+      const info = await stat(file);
+      if (info.size > MAX_CANDIDATE_BYTES) continue;
+    } catch {
+      continue;
+    }
+    // 按字节读。latin1 一字节一字符，不丢字节也不抛错。
+    // SQLite 与共享字典里都是明文字节，正则按 ASCII 认。
     let text;
     try {
-      text = await readFile(file, "utf8");
+      text = await readFile(file, "latin1");
     } catch {
       continue;
     }
